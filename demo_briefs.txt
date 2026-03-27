@@ -1,0 +1,17 @@
+# Test briefs for FreelanceFlow demo recording
+# Use these to show the agent's output quality during the 30-second demo
+
+---BRIEF 1 (Python scraper — clear scope)---
+Need a Python script that scrapes daily pricing data from 3 competitor websites and emails me a formatted CSV summary every morning at 8am EST. Sites don't require login. Budget $800. Need it running in 10 days.
+
+---BRIEF 2 (AI agent — medium complexity)---
+Looking for someone to build a LangChain-based customer support agent that reads our Notion FAQ database and answers Slack questions automatically. Should know when to escalate to a human. We're a small SaaS company (~50 users). Budget $2,000-$3,000. Timeline: 3 weeks.
+
+---BRIEF 3 (Data pipeline — well-specified)---
+Need an ETL pipeline in Python: pull sales data from Shopify API → clean and normalize → push to PostgreSQL → generate weekly Streamlit dashboard. Data is ~50k orders/month. Budget $4,000. Start ASAP, 4-week delivery.
+
+---BRIEF 4 (Vague — tests red flag handling)---
+Help me with some coding stuff. Python mostly. Not sure on budget yet.
+
+---BRIEF 5 (Realistic Contra job — good for demo)---
+I'm a UX designer and need help building a Streamlit app that lets clients upload a CSV, choose 2-3 columns, and see auto-generated charts. Should have clean UI. No database needed — just file upload → viz. Budget $600. 1 week timeline.
