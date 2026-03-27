@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-FreelanceFlow MCP Client
-Feeds job descriptions into Notion's Client Pipeline database via Notion MCP,
+FreelanceFlow — Notion API Client
+Feeds job descriptions into Notion's Client Pipeline database,
 triggering the FreelanceFlow Custom Agent automatically.
 
 Usage:
@@ -10,13 +10,14 @@ Usage:
     python notion_freelanceflow.py --interactive
 
 Setup:
-    1. Get Notion MCP OAuth token: https://mcp.notion.com/mcp
-    2. Set NOTION_MCP_TOKEN in environment or .env file
+    1. Create a Notion internal integration: https://www.notion.so/profile/integrations
+    2. Set NOTION_MCP_TOKEN to your integration secret in .env
     3. Set NOTION_DATABASE_ID to your Client Pipeline database ID
-    4. pip install httpx python-dotenv
+    4. Share the Client Pipeline database with your integration
+    5. pip install httpx python-dotenv
 
-Notion MCP endpoint: https://mcp.notion.com/mcp
-Rate limits: 180 req/min general, 30 req/min search
+Notion API: https://api.notion.com/v1
+Rate limits: 3 req/sec
 """
 
 import argparse
@@ -30,57 +31,46 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-NOTION_MCP_URL = "https://mcp.notion.com/mcp"
+NOTION_API_URL = "https://api.notion.com/v1"
 NOTION_MCP_TOKEN = os.getenv("NOTION_MCP_TOKEN")
 DATABASE_ID = os.getenv("NOTION_DATABASE_ID")
+NOTION_VERSION = "2022-06-28"
 
 
-def mcp_call(tool: str, arguments: dict) -> dict:
-    """Make a single Notion MCP tool call via Streamable HTTP transport."""
+def notion_request(method: str, path: str, body: dict | None = None) -> dict:
+    """Make an authenticated Notion API request."""
     if not NOTION_MCP_TOKEN:
         raise EnvironmentError(
             "NOTION_MCP_TOKEN not set. "
-            "Get your token at https://mcp.notion.com/mcp"
+            "Create an integration at https://www.notion.so/profile/integrations"
         )
-
-    payload = {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "tools/call",
-        "params": {
-            "name": tool,
-            "arguments": arguments,
-        },
-    }
 
     headers = {
         "Authorization": f"Bearer {NOTION_MCP_TOKEN}",
         "Content-Type": "application/json",
-        "Accept": "application/json, text/event-stream",
+        "Notion-Version": NOTION_VERSION,
     }
 
     with httpx.Client(timeout=30) as client:
-        response = client.post(NOTION_MCP_URL, json=payload, headers=headers)
+        if method == "POST":
+            response = client.post(
+                f"{NOTION_API_URL}{path}", json=body, headers=headers
+            )
+        else:
+            response = client.get(f"{NOTION_API_URL}{path}", headers=headers)
         response.raise_for_status()
         return response.json()
 
 
 def find_database(name_hint: str = "Client Pipeline") -> str | None:
     """Search for the Client Pipeline database by name."""
-    result = mcp_call("notion-search", {
+    result = notion_request("POST", "/search", {
         "query": name_hint,
         "filter": {"value": "database", "property": "object"},
     })
-    content = result.get("result", {}).get("content", [{}])
-    if not content:
-        return None
-    try:
-        data = json.loads(content[0].get("text", "{}"))
-        results = data.get("results", [])
-        if results:
-            return results[0]["id"]
-    except (json.JSONDecodeError, KeyError, IndexError):
-        pass
+    results = result.get("results", [])
+    if results:
+        return results[0]["id"]
     return None
 
 
@@ -88,7 +78,7 @@ def create_pipeline_entry(brief: str, database_id: str) -> dict:
     """Create a new entry in the Client Pipeline database."""
     now = datetime.now(timezone.utc).isoformat()
 
-    result = mcp_call("notion-create-pages", {
+    return notion_request("POST", "/pages", {
         "parent": {"database_id": database_id},
         "properties": {
             "Name": {
@@ -109,13 +99,6 @@ def create_pipeline_entry(brief: str, database_id: str) -> dict:
             },
         },
     })
-
-    content = result.get("result", {}).get("content", [{}])
-    try:
-        data = json.loads(content[0].get("text", "{}"))
-        return data
-    except (json.JSONDecodeError, KeyError, IndexError):
-        return result
 
 
 def get_page_url(page_id: str) -> str:
@@ -183,7 +166,8 @@ def main():
 
     entry = create_pipeline_entry(brief, db_id)
     page_id = entry.get("id", "unknown")
-    url = get_page_url(page_id) if page_id != "unknown" else "(check Notion)"
+    notion_url = entry.get("url", get_page_url(page_id) if page_id != "unknown" else "(check Notion)")
+    url = notion_url
 
     print("✅ Entry created successfully!")
     print(f"   Page ID: {page_id}")
