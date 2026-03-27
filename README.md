@@ -49,7 +49,7 @@ CLI brief → Notion MCP → Client Pipeline database → Custom Agent fires →
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/[USERNAME]/freelanceflow-notion
+git clone https://github.com/metaplansolutions/freelanceflow-notion
 cd freelanceflow-notion
 pip install -r requirements.txt
 ```
